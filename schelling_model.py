@@ -5,11 +5,12 @@ import random
 
 
 p = 0.8
-t1 = 4
+t1 = 3
 t2 = 4
 x_val = 2
 o_val = 4
 t1_ratio = 1.0  # When you want 0.8/0.2 ratio of t1 and t2, set this as 0.8
+
 
 def generateBoard(x, y):
     board = np.zeros([x,y])
@@ -32,11 +33,7 @@ def visualizeBoard(board):
     plt.show()
 
 
-def getUnsatisfiedCells(board, row):
-    x_unsatis = []
-    o_unsatis = []
-    x_sati_cell = []
-    o_sati_cell = []
+def getUnsatisfiedCells(board, row, unsatis, empty_cell):
     l_row = max(row-1, 0)
     u_row = min(row+2, len(board))
 
@@ -45,53 +42,95 @@ def getUnsatisfiedCells(board, row):
         u_col = min(col+2, len(board[0]))
         neighbours = board[l_row:u_row, l_col:u_col].flatten()
         main_val = board[row,col]
-        if main_val == x_val:
-            count = np.count_nonzero(neighbours == x_val) - 1
-            if count < t1:
-                x_unsatis.append(col)
-        elif main_val == o_val:
-            count = np.count_nonzero(neighbours == o_val) - 1
-            if count < t1:
-                o_unsatis.append(col)
-        else:
+
+        if main_val == 0:
             x_nbrs = np.count_nonzero(neighbours == x_val)
             o_nbrs = np.count_nonzero(neighbours == o_val)
-            if x_nbrs>=t1:
-                x_sati_cell.append(col)
-            if o_nbrs>=t1:
-                o_sati_cell.append(col)
 
-    # print("Unsatisfied X:", x_unsatis)
-    # print("Unsatisfied O:", o_unsatis)
-    # print("Poses for   X:", x_sati_cell)
-    # print("Poses for   O:", o_sati_cell)
-    # print("\n")
-
-    return x_unsatis, o_unsatis, x_sati_cell, o_sati_cell
-
-def switchingAlgo(board, row, val, unsatis, sati_cell, other_sati_cell):
-    for uns_cell in unsatis:
-        if len(sati_cell)>0:
-            cell = sati_cell.pop(0)
-            board[row, cell] = val
-            board[row, uns_cell] = 0
-            if cell in other_sati_cell: other_sati_cell.remove(cell)
+            empty_cell = np.concatenate((empty_cell, [[row, col, x_nbrs, o_nbrs]]))
         else:
-            break
+            count = np.count_nonzero(neighbours == main_val) - 1
+            if count<t1:
+                unsatis = np.concatenate((unsatis, [[row, col]]))
+    
+    return unsatis, empty_cell
 
-def rearrangeBoardRow(board, row, x_unsatis, o_unsatis, x_sati_cell, o_sati_cell):
-    o_sati_cell = switchingAlgo(board, row, x_val, x_unsatis, x_sati_cell, o_sati_cell)
-    switchingAlgo(board, row, o_val, o_unsatis, o_sati_cell, x_sati_cell)
+
+def getNearestEmptyIndex(board, empty_cell, agent, main_val):
+    col = 2 if main_val == x_val else 3
+    valid_cells = empty_cell[np.where(empty_cell[:,col]>=t1)]
+    if not (len(valid_cells) > 0):
+        return []
+    valid_cells = valid_cells[:, 0:2]
+    distances = np.sum(valid_cells - agent, axis=1)
+    # print(valid_cells)
+    final_cell = valid_cells[np.argmin(distances)]
+    # print(final_cell)
+    # print(empty_cell[:,0:2])
+    # return 
+    return np.where(np.all(empty_cell[:,0:2] == final_cell, axis=1))
+
+
+def swapToNearest(board, empty_cell, agent, main_val):
+    nearest_index = getNearestEmptyIndex(board, empty_cell, agent, main_val)
+    # print(nearest_index)
+    available = False
+    if len(nearest_index) > 0:
+        board[agent[0], agent[1]] = 0
+        nearest_cell = empty_cell[nearest_index[0][0], 0:2]
+        board[nearest_cell[0], nearest_cell[1]] = main_val
+
+        empty_cell[nearest_index[0][0], 0:2] = agent
+        available = True
+
+    return main_val, available
+     
+
+def getSatisfactionLists(board):
+    not_solved = False
+    unsatis = np.array([])
+    empty_cell = np.array([])
+    once = True
+    
+    for row in range(len(board)):
+        if once:
+            unsatis = np.array([[0,0]])
+            empty_cell = np.array([[0,0,0,0]])
+        unsatis, empty_cell = getUnsatisfiedCells(board, row, unsatis, empty_cell)
+        if once:
+            unsatis = unsatis[1:]
+            empty_cell = empty_cell[1:]
+            once = False
+    return unsatis, empty_cell
+
+
+def updateEmptyCell(board, empty_cell):
+    for i, cell in enumerate(empty_cell):
+        row = cell[0]
+        col = cell[1]
+        l_row = max(row-1, 0)
+        u_row = min(row+2, len(board))
+        l_col = max(col-1, 0)
+        u_col = min(col+2, len(board[0]))
+
+        neighbours = board[l_row:u_row, l_col:u_col].flatten()
+
+        x_nbrs = np.count_nonzero(neighbours == x_val)
+        o_nbrs = np.count_nonzero(neighbours == o_val)
+
+        empty_cell[i] = [row, col, x_nbrs, o_nbrs]
         
 
 def manageBoard(board):
-    not_solved = False
-    for row in range(len(board)):
-        x_unsatis, o_unsatis, x_sati_cell, o_sati_cell = getUnsatisfiedCells(board, row)
-        rearrangeBoardRow(board, row, x_unsatis, o_unsatis, x_sati_cell, o_sati_cell)
-        if(len(x_unsatis)>0 or len(o_unsatis)>0):
-            not_solved = True
-    return not_solved
+    unsatis, empty_cell = getSatisfactionLists(board)
+    x_strike = False
+    o_strike = False
+    for i in range(len(unsatis)):
+        agent = unsatis[i]
+        main_val = board[agent[0], agent[1]]
+        strike = x_strike if main_val == x_val else o_strike
+        val, swapped = swapToNearest(board, empty_cell, agent, main_val)
+        updateEmptyCell(board, empty_cell)
 
 
 if __name__ == '__main__':
@@ -100,11 +139,12 @@ if __name__ == '__main__':
     # print(board, "\n\n\n")
 
     visualizeBoard(board)
-    not_solved = True
-    counter = 0
-    sim_counts = 10
-    while(not_solved and counter<sim_counts):
-        not_solved = manageBoard(board)
-        # print(counter)
-        counter += 1
+    rounds = 100
+    for i in range(rounds):
+        # if i % (rounds/10) == 0:
+        #     print(i)
+        manageBoard(board)
+
+    # print("############")
+    # print(board)
     visualizeBoard(board)
