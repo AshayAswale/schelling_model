@@ -4,11 +4,11 @@ import matplotlib.image as mpimg
 import random
 import sys
 
-p = 0.6         # Fraction of cells filled
-t1 = 3          # Satisfaction threshold
+p = 0.8         # Fraction of cells filled
+t1 = 5          # Satisfaction threshold
 t2 = 5          # Will only be used if t1_ratio is not 1. Second satisfaction Threshold
 t1_ratio = 1.0  # When you want 0.8/0.2 ratio of t1 and t2, set this as 0.8
-rounds = 100
+rounds = 1000
 
 x_val = [50,49]
 o_val = [100,99]
@@ -92,8 +92,7 @@ def swapToNearest(board, empty_cell, agent, main_val):
 
         empty_cell[nearest_index[0][0], 0:2] = agent
         available = True
-
-    return main_val, available
+    return available
      
 
 def getSatisfactionLists(board):
@@ -135,15 +134,19 @@ def updateEmptyCell(board, empty_cell):
 
 def manageBoard(board):
     unsatis, empty_cell = getSatisfactionLists(board)
-    x_strike = False
-    o_strike = False
+    one_swapped = False
     for i in range(len(unsatis)):
         agent = unsatis[i]
         main_val = board[agent[0], agent[1]]
-        strike = x_strike if (main_val in x_val) else o_strike
-        val, swapped = swapToNearest(board, empty_cell, agent, main_val)
+        swapped = swapToNearest(board, empty_cell, agent, main_val)
+        if(swapped):
+            one_swapped = True
         updateEmptyCell(board, empty_cell)
-    if len(unsatis) == 0:
+    if (len(unsatis) == 0) or (not one_swapped):
+        if((len(unsatis) == 0)):
+            print("\n\nNo one is unhappy anymore!! :D")
+        else:
+            print("\n\nNo available free space makes anyone happy anymore. :(")
         return True
     return False
 
