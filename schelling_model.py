@@ -1,14 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 import random
-import sys
 
 p = 0.8         # Fraction of cells filled
 t1 = 3          # Satisfaction threshold
 t2 = 5          # Will only be used if t1_ratio is not 1. Second satisfaction Threshold
 t1_ratio = 0.8  # When you want 0.8/0.2 ratio of t1 and t2, set this as 0.8
-rounds = 1000
+rounds = 1000   # Maximum rounds that should run
 
 x_val = [50,49]
 o_val = [100,99]
@@ -164,26 +162,13 @@ if __name__ == '__main__':
     print("Visualizing the board\nPlease close the window to start the code\n\n")
     visualizeBoard(board)
 
-    print("Completion progress bar")
-    toolbar_width = 100
-    # setup toolbar
-    sys.stdout.write("[%s]" % (" " * toolbar_width))
-    sys.stdout.flush()
-    sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
-    perct_value = 0
     # saveBoard(board, -1)
     for i in range(rounds):
         if(manageBoard(board)):
             print("\nSolved in ", i, " steps")
             break
         # saveBoard(board, i)
-        perct_comp = i/rounds*100
-        if perct_value < perct_comp:
-            sys.stdout.write("#")
-            sys.stdout.flush()
-            perct_value += 1
 
     # print("############")
     # print(board)
-    sys.stdout.write("]\n")
     visualizeBoard(board)
