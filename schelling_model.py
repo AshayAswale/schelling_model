@@ -5,9 +5,9 @@ import random
 import sys
 
 p = 0.8         # Fraction of cells filled
-t1 = 5          # Satisfaction threshold
+t1 = 3          # Satisfaction threshold
 t2 = 5          # Will only be used if t1_ratio is not 1. Second satisfaction Threshold
-t1_ratio = 1.0  # When you want 0.8/0.2 ratio of t1 and t2, set this as 0.8
+t1_ratio = 0.8  # When you want 0.8/0.2 ratio of t1 and t2, set this as 0.8
 rounds = 1000
 
 x_val = [50,49]
@@ -33,6 +33,12 @@ def generateBoard(x, y):
 def visualizeBoard(board):
     plt.imshow(board)
     plt.show()
+
+
+def saveBoard(board, i):
+    plt.imshow(board)
+    file_name = str(i)
+    plt.savefig(file_name)
 
 
 def getUnsatisfiedCells(board, row, unsatis, empty_cell):
@@ -165,11 +171,12 @@ if __name__ == '__main__':
     sys.stdout.flush()
     sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
     perct_value = 0
-
+    # saveBoard(board, -1)
     for i in range(rounds):
         if(manageBoard(board)):
             print("\nSolved in ", i, " steps")
             break
+        # saveBoard(board, i)
         perct_comp = i/rounds*100
         if perct_value < perct_comp:
             sys.stdout.write("#")
